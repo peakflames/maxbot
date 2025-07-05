@@ -57,15 +57,8 @@ public static class ToolExecutionDisplay
     /// <returns>A renderable progress indicator</returns>
     public static IRenderable CreateProgressIndicator(string toolName, string? description = null)
     {
-        var animationFrame = DateTime.Now.Millisecond / 250 % 4;
-        var spinner = animationFrame switch
-        {
-            0 => "⠋",
-            1 => "⠙",
-            2 => "⠹",
-            3 => "⠸",
-            _ => "⠋"
-        };
+        // Use unified animation utility for consistent timing
+        var spinner = AnimationUtility.GetSpinnerFrame(4, 80);
 
         var text = !string.IsNullOrWhiteSpace(description) 
             ? $"{spinner} {toolName}: {description}"

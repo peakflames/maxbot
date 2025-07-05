@@ -12,21 +12,11 @@ public class ThinkingTuiState : ITuiState
 
     public IRenderable RenderDynamicContent(ITuiContext context)
     {
-        var animationFrame = DateTime.Now.Millisecond / 250 % 4;
-        var leadingAnimation = animationFrame switch
-        {
-            0 => "   ",
-            1 => ".  ",
-            2 => ".. ",
-            3 => "...",
-            _ => "   "
-        };
-
-        // Calculate duration since AI operation started
-        var duration = (int)(DateTime.Now - context.AiOperationStartTime).TotalSeconds;
-        var durationText = duration > 0 ? $"{duration}s" : "0s";
-
-        var thinkingComponent = new Panel(new Markup($"[orange3]{leadingAnimation}[/] [dim]Thinking (esc to cancel, {durationText})[/]"))
+        // DEAD CODE: This method is NEVER CALLED by the real application!
+        // The real app uses ProgressPanel component for spinner rendering.
+        // This exists only for test infrastructure that should be updated.
+        
+        var thinkingComponent = new Panel(new Markup("⠋ [dim]Thinking... Press Esc to cancel[/]"))
             .NoBorder();
 
         return new Rows(new Text(""), thinkingComponent, new Text(""), CreateFlexFooterComponent(context));
@@ -87,12 +77,23 @@ public class ThinkingTuiState : ITuiState
             context.AiOperationStartTime = DateTime.Now;
 
             var chatHistory = context.HistoryManager.GetCurrentChatHistory();
+
+            // Check if there's any chat history to process
+            if (chatHistory.Count == 0)
+            {
+                context.Logger?.LogDebug("No chat history to process, returning to Input state");
+                await context.RequestStateTransitionAsync(ChatState.Input);
+                return;
+            }
+
             var responseStream = context.AppService.ProcessChatMessageAsync(chatHistory, context.AiOperationCts.Token);
 
             var assistantMessage = new ChatMessage(ChatRole.Assistant, "");
             context.HistoryManager.AddAssistantMessage(assistantMessage);
             context.ScrollbackTerminal.WriteStatic(new Markup(""));
             context.ScrollbackTerminal.WriteStatic(RenderMessage(assistantMessage), isUpdatable: true);
+
+            var streamCompleted = false;
 
             await foreach (var responseUpdate in responseStream)
             {
@@ -131,12 +132,18 @@ public class ThinkingTuiState : ITuiState
                 }
             }
 
-            context.ScrollbackTerminal.WriteStatic(new Markup(""));
-            context.Logger?.LogInformation($"ChatMsg[Assistant, '{assistantMessage.Text}'");
-            context.ScrollbackTerminal.WriteStatic(RenderMessage(assistantMessage));
+            // Mark stream as completed
+            streamCompleted = true;
+            context.Logger?.LogDebug("RACE_CONDITION_DEBUG: Stream processing completed, streamCompleted = {StreamCompleted}", streamCompleted);
 
-            // Return to input state when AI processing is complete
-            await context.RequestStateTransitionAsync(ChatState.Input);
+            // Only add final spacing and transition - NO duplicate message writing
+            if (streamCompleted)
+            {
+                context.ScrollbackTerminal.WriteStatic(new Markup(""));
+                context.Logger?.LogDebug("RACE_CONDITION_DEBUG: Requesting transition to Input state");
+                await context.RequestStateTransitionAsync(ChatState.Input);
+                context.Logger?.LogDebug("RACE_CONDITION_DEBUG: State transition request completed");
+            }
         }
         catch (OperationCanceledException) when (context.AiOperationCts?.Token.IsCancellationRequested == true)
         {

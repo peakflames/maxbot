@@ -1,15 +1,14 @@
 namespace Mogzi.TUI.Components;
 
 /// <summary>
-/// Handles the main input area of the TUI application.
-/// Manages cursor positioning, text display, and input validation.
+/// Handles user input display and text editing functionality.
+/// Supports autocomplete integration and input validation.
 /// </summary>
-public class InputPanel : ITuiComponent
+public class InputPanel : BaseTuiComponent
 {
-    public string Name => "InputPanel";
-    public bool IsVisible { get; set; } = true;
+    public override string Name => "InputPanel";
 
-    public IRenderable Render(IRenderContext context)
+    protected override IRenderable RenderContent(IRenderContext context)
     {
         var prompt = "[blue]>[/] ";
         var cursor = "[blink]▋[/]";
@@ -35,20 +34,20 @@ public class InputPanel : ITuiComponent
             .Expand();
     }
 
-    public Task<bool> HandleInputAsync(IRenderContext context, object inputEvent)
+    public override Task<bool> HandleInputAsync(IRenderContext context, object inputEvent)
     {
         // Input handling is delegated to the state manager and mediator
         // This component focuses on rendering
         return Task.FromResult(false);
     }
 
-    public Task InitializeAsync(IRenderContext context)
+    public override Task InitializeAsync(IRenderContext context)
     {
         context.Logger.LogDebug("InputPanel initialized");
         return Task.CompletedTask;
     }
 
-    public Task DisposeAsync()
+    public override Task DisposeAsync()
     {
         return Task.CompletedTask;
     }

@@ -1,15 +1,14 @@
 namespace Mogzi.TUI.Components;
 
 /// <summary>
-/// Displays interactive selection options for user commands.
-/// Handles option navigation and selection for different selection providers.
+/// Displays user selection options for tool approvals and other choices.
+/// Supports keyboard navigation and selection confirmation.
 /// </summary>
-public class UserSelectionPanel : ITuiComponent
+public class UserSelectionPanel : BaseTuiComponent
 {
-    public string Name => "UserSelectionPanel";
-    public bool IsVisible { get; set; } = true;
+    public override string Name => "UserSelectionPanel";
 
-    public IRenderable Render(IRenderContext context)
+    protected override IRenderable RenderContent(IRenderContext context)
     {
         var inputContext = context.TuiContext.InputContext;
 
@@ -34,20 +33,20 @@ public class UserSelectionPanel : ITuiComponent
             .Padding(0, 0);
     }
 
-    public Task<bool> HandleInputAsync(IRenderContext context, object inputEvent)
+    public override Task<bool> HandleInputAsync(IRenderContext context, object inputEvent)
     {
         // Input handling is delegated to the state manager and mediator
         // This component focuses on rendering
         return Task.FromResult(false);
     }
 
-    public Task InitializeAsync(IRenderContext context)
+    public override Task InitializeAsync(IRenderContext context)
     {
         context.Logger.LogDebug("UserSelectionPanel initialized");
         return Task.CompletedTask;
     }
 
-    public Task DisposeAsync()
+    public override Task DisposeAsync()
     {
         return Task.CompletedTask;
     }

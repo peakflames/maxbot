@@ -12,7 +12,7 @@ public class TuiStateManager(ILogger<TuiStateManager> logger) : ITuiStateManager
 
     private ITuiContext? _context;
     private ITuiState? _currentState;
-    private ChatState _currentStateType = ChatState.Input;
+    private ChatState _currentStateType = ChatState.None;
 
     public ITuiState? CurrentState
     {
@@ -78,17 +78,21 @@ public class TuiStateManager(ILogger<TuiStateManager> logger) : ITuiStateManager
 
         try
         {
-            _logger.LogDebug("Transitioning from {PreviousState} to {NewState}",
-                previousState?.Name ?? "none", newState.Name);
+            _logger.LogDebug("RACE_CONDITION_DEBUG: Starting transition from {PreviousState} to {NewState} at {Timestamp}",
+                previousState?.Name ?? "none", newState.Name, DateTime.UtcNow.ToString("HH:mm:ss.fff"));
 
             // Call exit on previous state
             if (previousState != null)
             {
+                _logger.LogDebug("RACE_CONDITION_DEBUG: Calling OnExitAsync for {PreviousState}", previousState.Name);
                 await previousState.OnExitAsync(_context, newState);
+                _logger.LogDebug("RACE_CONDITION_DEBUG: OnExitAsync completed for {PreviousState}", previousState.Name);
             }
 
             // Call enter on new state
+            _logger.LogDebug("RACE_CONDITION_DEBUG: Calling OnEnterAsync for {NewState}", newState.Name);
             await newState.OnEnterAsync(_context, previousState);
+            _logger.LogDebug("RACE_CONDITION_DEBUG: OnEnterAsync completed for {NewState}", newState.Name);
 
             _logger.LogDebug("Successfully transitioned to {NewState}", newState.Name);
         }
@@ -102,7 +106,7 @@ public class TuiStateManager(ILogger<TuiStateManager> logger) : ITuiStateManager
 
     public IRenderable RenderDynamicContent()
     {
-        if (_context == null || _currentState == null)
+        if (_context == null || _currentStateType == ChatState.None || _currentState == null)
         {
             return new Text("State manager not initialized");
         }
@@ -120,7 +124,7 @@ public class TuiStateManager(ILogger<TuiStateManager> logger) : ITuiStateManager
 
     public async Task HandleKeyPressAsync(KeyPressEventArgs e)
     {
-        if (_context == null || _currentState == null)
+        if (_context == null || _currentStateType == ChatState.None || _currentState == null)
         {
             return;
         }
@@ -138,7 +142,7 @@ public class TuiStateManager(ILogger<TuiStateManager> logger) : ITuiStateManager
 
     public async Task HandleCharacterTypedAsync(CharacterTypedEventArgs e)
     {
-        if (_context == null || _currentState == null)
+        if (_context == null || _currentStateType == ChatState.None || _currentState == null)
         {
             return;
         }
@@ -174,6 +178,7 @@ public class TuiStateManager(ILogger<TuiStateManager> logger) : ITuiStateManager
         {
             currentState = _currentState;
             _currentState = null;
+            _currentStateType = ChatState.None;
         }
 
         if (currentState != null && _context != null)

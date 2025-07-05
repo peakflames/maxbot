@@ -1,14 +1,18 @@
-namespace Mogzi.TUI.Infrastructure;
+using Mogzi.TUI.Infrastructure;
+
+namespace Mogzi.TUI.Tests.Integration;
 
 /// <summary>
-/// Advanced keyboard input handler with event-driven architecture and key combination support.
-/// Replaces polling-based input with proper event handling for better responsiveness.
+/// Test-friendly keyboard handler that doesn't rely on console access.
+/// Allows programmatic simulation of keyboard events for integration testing.
 /// </summary>
-public sealed class AdvancedKeyboardHandler : IKeyboardHandler
+public sealed class TestKeyboardHandler : IKeyboardHandler
 {
-    private readonly ILogger<AdvancedKeyboardHandler>? _logger;
+    private readonly ILogger<TestKeyboardHandler> _logger;
     private readonly Dictionary<KeyBinding, Action<KeyPressEventArgs>> _keyBindings = [];
     private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private readonly Queue<ConsoleKeyInfo> _keyQueue = new();
+    private readonly object _queueLock = new();
     private Task? _inputTask;
     private bool _isDisposed = false;
 
@@ -38,13 +42,12 @@ public sealed class AdvancedKeyboardHandler : IKeyboardHandler
     public KeyboardStatistics Statistics { get; private set; } = new();
 
     /// <summary>
-    /// Initializes a new instance of AdvancedKeyboardHandler.
+    /// Initializes a new instance of TestKeyboardHandler.
     /// </summary>
-    public AdvancedKeyboardHandler(ILogger<AdvancedKeyboardHandler>? logger = null)
+    public TestKeyboardHandler(ILogger<TestKeyboardHandler> logger)
     {
-        _logger = logger;
-        RegisterDefaultKeyBindings();
-        _logger?.LogDebug("AdvancedKeyboardHandler initialized");
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _logger.LogDebug("TestKeyboardHandler initialized");
     }
 
     /// <summary>
@@ -59,7 +62,7 @@ public sealed class AdvancedKeyboardHandler : IKeyboardHandler
             throw new InvalidOperationException("Keyboard handler is already running");
         }
 
-        _logger?.LogDebug("Starting advanced keyboard input handling");
+        _logger.LogDebug("Starting test keyboard input handling");
 
         using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken, _cancellationTokenSource.Token);
@@ -73,13 +76,13 @@ public sealed class AdvancedKeyboardHandler : IKeyboardHandler
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error in keyboard input handling");
+            _logger.LogError(ex, "Error in test keyboard input handling");
             throw;
         }
         finally
         {
             IsRunning = false;
-            _logger?.LogDebug("Advanced keyboard input handling stopped");
+            _logger.LogDebug("Test keyboard input handling stopped");
         }
     }
 
@@ -93,7 +96,7 @@ public sealed class AdvancedKeyboardHandler : IKeyboardHandler
             return;
         }
 
-        _logger?.LogDebug("Stopping advanced keyboard input handling");
+        _logger.LogDebug("Stopping test keyboard input handling");
         _cancellationTokenSource.Cancel();
 
         if (_inputTask != null)
@@ -124,7 +127,7 @@ public sealed class AdvancedKeyboardHandler : IKeyboardHandler
         var binding = new KeyBinding(key, modifiers);
         _keyBindings[binding] = handler;
 
-        _logger?.LogDebug("Registered key binding: {Key} + {Modifiers}", key, modifiers);
+        _logger.LogDebug("Registered key binding: {Key} + {Modifiers}", key, modifiers);
     }
 
     /// <summary>
@@ -148,26 +151,104 @@ public sealed class AdvancedKeyboardHandler : IKeyboardHandler
         var binding = new KeyBinding(key, modifiers);
         if (_keyBindings.Remove(binding))
         {
-            _logger?.LogDebug("Unregistered key binding: {Key} + {Modifiers}", key, modifiers);
+            _logger.LogDebug("Unregistered key binding: {Key} + {Modifiers}", key, modifiers);
         }
     }
 
     /// <summary>
-    /// Handles keyboard input in an event-driven manner.
+    /// Simulates a key press by adding it to the internal queue.
+    /// </summary>
+    public void SimulateKeyPress(ConsoleKeyInfo keyInfo)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        lock (_queueLock)
+        {
+            _keyQueue.Enqueue(keyInfo);
+        }
+
+        _logger.LogDebug("Simulated key press: {Key} + {Modifiers}", keyInfo.Key, keyInfo.Modifiers);
+    }
+
+    /// <summary>
+    /// Simulates a key press with the specified key and modifiers.
+    /// </summary>
+    public void SimulateKeyPress(ConsoleKey key, ConsoleModifiers modifiers = ConsoleModifiers.None, char keyChar = '\0')
+    {
+        var keyInfo = new ConsoleKeyInfo(keyChar, key,
+            (modifiers & ConsoleModifiers.Shift) != 0,
+            (modifiers & ConsoleModifiers.Alt) != 0,
+            (modifiers & ConsoleModifiers.Control) != 0);
+
+        SimulateKeyPress(keyInfo);
+    }
+
+    /// <summary>
+    /// Simulates typing a character.
+    /// </summary>
+    public void SimulateCharacter(char character)
+    {
+        var key = CharacterToConsoleKey(character);
+        var modifiers = char.IsUpper(character) ? ConsoleModifiers.Shift : ConsoleModifiers.None;
+        
+        SimulateKeyPress(key, modifiers, character);
+    }
+
+    /// <summary>
+    /// Simulates typing a string of characters.
+    /// </summary>
+    public void SimulateString(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return;
+        }
+
+        foreach (var character in text)
+        {
+            SimulateCharacter(character);
+        }
+    }
+
+    /// <summary>
+    /// Gets the current keyboard input statistics.
+    /// </summary>
+    public KeyboardStatistics GetStatistics()
+    {
+        return Statistics with
+        {
+            IsRunning = IsRunning,
+            RegisteredBindingsCount = _keyBindings.Count
+        };
+    }
+
+    /// <summary>
+    /// Handles keyboard input from the simulated queue.
     /// </summary>
     private async Task HandleKeyboardInputAsync(CancellationToken cancellationToken)
     {
-        _logger?.LogDebug("Starting keyboard input loop");
+        _logger.LogDebug("Starting test keyboard input loop");
 
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                // Check if a key is available without blocking
-                if (Console.KeyAvailable)
+                ConsoleKeyInfo? keyInfo = null;
+
+                lock (_queueLock)
                 {
-                    var keyInfo = Console.ReadKey(true); // true = don't display the key
-                    await ProcessKeyInputAsync(keyInfo);
+                    if (_keyQueue.Count > 0)
+                    {
+                        keyInfo = _keyQueue.Dequeue();
+                    }
+                }
+
+                if (keyInfo.HasValue)
+                {
+                    await ProcessKeyInputAsync(keyInfo.Value);
 
                     // Update statistics
                     Statistics = Statistics with
@@ -178,8 +259,8 @@ public sealed class AdvancedKeyboardHandler : IKeyboardHandler
                 }
                 else
                 {
-                    // Small delay to prevent busy waiting, but more responsive than before
-                    await Task.Delay(8, cancellationToken); // ~120 FPS polling rate for better responsiveness
+                    // Small delay to prevent busy waiting
+                    await Task.Delay(10, cancellationToken);
                 }
             }
         }
@@ -189,11 +270,11 @@ public sealed class AdvancedKeyboardHandler : IKeyboardHandler
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error in keyboard input handling");
+            _logger.LogError(ex, "Error in test keyboard input handling");
             throw;
         }
 
-        _logger?.LogDebug("Keyboard input loop stopped");
+        _logger.LogDebug("Test keyboard input loop stopped");
     }
 
     /// <summary>
@@ -243,39 +324,26 @@ public sealed class AdvancedKeyboardHandler : IKeyboardHandler
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error processing key input: {Key}", keyInfo.Key);
+            _logger.LogError(ex, "Error processing key input: {Key}", keyInfo.Key);
         }
 
         await Task.CompletedTask;
     }
 
     /// <summary>
-    /// Registers default key bindings for common operations.
+    /// Converts a character to its corresponding ConsoleKey.
     /// </summary>
-    private void RegisterDefaultKeyBindings()
+    private static ConsoleKey CharacterToConsoleKey(char character)
     {
-        // Global shortcuts - these will be handled by TuiApp
-        // Ctrl+C is handled separately as it's a termination signal
-
-        // Clear screen shortcut (Ctrl+L)
-        RegisterKeyBinding(ConsoleKey.L, ConsoleModifiers.Control, args =>
+        return character switch
         {
-            _logger?.LogDebug("Ctrl+L detected - clear screen requested");
-            // This will be handled by the consuming application
-        });
-
-        _logger?.LogDebug("Default key bindings registered");
-    }
-
-    /// <summary>
-    /// Gets the current keyboard input statistics.
-    /// </summary>
-    public KeyboardStatistics GetStatistics()
-    {
-        return Statistics with
-        {
-            IsRunning = IsRunning,
-            RegisteredBindingsCount = _keyBindings.Count
+            >= 'a' and <= 'z' => (ConsoleKey)(character - 'a' + (int)ConsoleKey.A),
+            >= 'A' and <= 'Z' => (ConsoleKey)(character - 'A' + (int)ConsoleKey.A),
+            >= '0' and <= '9' => (ConsoleKey)(character - '0' + (int)ConsoleKey.D0),
+            ' ' => ConsoleKey.Spacebar,
+            '\t' => ConsoleKey.Tab,
+            '\r' or '\n' => ConsoleKey.Enter,
+            _ => ConsoleKey.A // Default fallback
         };
     }
 
@@ -310,138 +378,18 @@ public sealed class AdvancedKeyboardHandler : IKeyboardHandler
         _cancellationTokenSource.Dispose();
         _keyBindings.Clear();
 
+        lock (_queueLock)
+        {
+            _keyQueue.Clear();
+        }
+
         // Clear event subscriptions
         KeyPressed = null;
         KeyCombinationPressed = null;
         CharacterTyped = null;
 
-        _logger?.LogDebug("AdvancedKeyboardHandler disposed");
+        _logger.LogDebug("TestKeyboardHandler disposed");
 
         GC.SuppressFinalize(this);
     }
-}
-
-/// <summary>
-/// Represents a key binding combination.
-/// </summary>
-public readonly record struct KeyBinding(ConsoleKey Key, ConsoleModifiers Modifiers);
-
-/// <summary>
-/// Event arguments for key press events.
-/// </summary>
-/// <remarks>
-/// Initializes a new instance of KeyPressEventArgs.
-/// </remarks>
-public sealed class KeyPressEventArgs(ConsoleKeyInfo keyInfo) : EventArgs
-{
-    /// <summary>
-    /// Gets the console key information.
-    /// </summary>
-    public ConsoleKeyInfo KeyInfo { get; } = keyInfo;
-
-    /// <summary>
-    /// Gets or sets whether the key press has been handled.
-    /// </summary>
-    public bool Handled { get; set; }
-
-    /// <summary>
-    /// Gets the key that was pressed.
-    /// </summary>
-    public ConsoleKey Key => KeyInfo.Key;
-
-    /// <summary>
-    /// Gets the modifiers that were pressed.
-    /// </summary>
-    public ConsoleModifiers Modifiers => KeyInfo.Modifiers;
-
-    /// <summary>
-    /// Gets the character representation of the key.
-    /// </summary>
-    public char KeyChar => KeyInfo.KeyChar;
-}
-
-/// <summary>
-/// Event arguments for key combination events.
-/// </summary>
-/// <remarks>
-/// Initializes a new instance of KeyCombinationEventArgs.
-/// </remarks>
-public sealed class KeyCombinationEventArgs(ConsoleKey key, ConsoleModifiers modifiers, char keyChar) : EventArgs
-{
-    /// <summary>
-    /// Gets the key that was pressed.
-    /// </summary>
-    public ConsoleKey Key { get; } = key;
-
-    /// <summary>
-    /// Gets the modifiers that were pressed.
-    /// </summary>
-    public ConsoleModifiers Modifiers { get; } = modifiers;
-
-    /// <summary>
-    /// Gets the character representation of the key.
-    /// </summary>
-    public char KeyChar { get; } = keyChar;
-
-    /// <summary>
-    /// Gets or sets whether the key combination has been handled.
-    /// </summary>
-    public bool Handled { get; set; }
-}
-
-/// <summary>
-/// Event arguments for character typed events.
-/// </summary>
-/// <remarks>
-/// Initializes a new instance of CharacterTypedEventArgs.
-/// </remarks>
-public sealed class CharacterTypedEventArgs(char character) : EventArgs
-{
-    /// <summary>
-    /// Gets the character that was typed.
-    /// </summary>
-    public char Character { get; } = character;
-
-    /// <summary>
-    /// Gets or sets whether the character has been handled.
-    /// </summary>
-    public bool Handled { get; set; }
-}
-
-/// <summary>
-/// Contains keyboard input statistics and performance metrics.
-/// </summary>
-public sealed record KeyboardStatistics(
-    bool IsRunning = false,
-    long TotalKeysProcessed = 0,
-    int RegisteredBindingsCount = 0,
-    DateTime? LastKeyPressTime = null)
-{
-    /// <summary>
-    /// Gets the keys per second rate based on recent activity.
-    /// </summary>
-    public double KeysPerSecond
-    {
-        get
-        {
-            if (LastKeyPressTime == null || TotalKeysProcessed == 0)
-            {
-                return 0.0;
-            }
-
-            var elapsed = DateTime.UtcNow - LastKeyPressTime.Value;
-            if (elapsed.TotalSeconds < 1.0)
-            {
-                return TotalKeysProcessed; // Recent activity
-            }
-
-            return TotalKeysProcessed / elapsed.TotalSeconds;
-        }
-    }
-
-    /// <summary>
-    /// Gets whether the keyboard handler is responsive.
-    /// </summary>
-    public bool IsResponsive => IsRunning && (LastKeyPressTime == null ||
-        DateTime.UtcNow - LastKeyPressTime.Value < TimeSpan.FromSeconds(5));
 }

@@ -1,44 +1,59 @@
 namespace Mogzi.TUI.Components;
 
 /// <summary>
-/// Represents a UI component in the TUI application.
-/// Components are modular, reusable pieces of UI that can be composed into layouts.
+/// Base interface for all TUI components.
+/// Defines the contract for component rendering, input handling, and lifecycle management.
 /// </summary>
 public interface ITuiComponent
 {
     /// <summary>
-    /// Gets the name of this component for identification and logging purposes.
+    /// Gets the unique name of the component.
     /// </summary>
     string Name { get; }
 
     /// <summary>
-    /// Gets or sets whether this component is currently visible.
+    /// Gets or sets whether the component is visible and should be rendered.
     /// </summary>
     bool IsVisible { get; set; }
 
     /// <summary>
-    /// Renders the component content.
+    /// Gets whether the component needs to be re-rendered due to state changes.
     /// </summary>
-    /// <param name="context">The render context containing state and services</param>
-    /// <returns>The renderable content for this component</returns>
+    bool IsDirty { get; }
+
+    /// <summary>
+    /// Marks the component as dirty, requiring re-rendering.
+    /// </summary>
+    void MarkDirty();
+
+    /// <summary>
+    /// Marks the component as clean after rendering.
+    /// </summary>
+    void MarkClean();
+
+    /// <summary>
+    /// Renders the component and returns the renderable content.
+    /// </summary>
+    /// <param name="context">The rendering context containing shared state and services</param>
+    /// <returns>The rendered content</returns>
     IRenderable Render(IRenderContext context);
 
     /// <summary>
-    /// Handles input events for this component.
+    /// Handles input events for the component.
     /// </summary>
-    /// <param name="context">The render context containing state and services</param>
+    /// <param name="context">The rendering context containing shared state and services</param>
     /// <param name="inputEvent">The input event to handle</param>
     /// <returns>True if the input was handled, false otherwise</returns>
     Task<bool> HandleInputAsync(IRenderContext context, object inputEvent);
 
     /// <summary>
-    /// Called when the component is initialized.
+    /// Initializes the component with the given context.
     /// </summary>
-    /// <param name="context">The render context containing state and services</param>
+    /// <param name="context">The rendering context containing shared state and services</param>
     Task InitializeAsync(IRenderContext context);
 
     /// <summary>
-    /// Called when the component is being disposed.
+    /// Disposes of the component and cleans up resources.
     /// </summary>
     Task DisposeAsync();
 }

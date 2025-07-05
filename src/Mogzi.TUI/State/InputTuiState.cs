@@ -433,9 +433,6 @@ public class InputTuiState : ITuiState
     {
         try
         {
-            // Add spacing before user message
-            context.ScrollbackTerminal.WriteStatic(new Markup(""));
-
             // Get current environment context
             var envPrompt = EnvSystemPrompt.GetEnvPrompt(
                 DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
@@ -457,6 +454,9 @@ public class InputTuiState : ITuiState
 
             context.Logger?.LogDebug("Full user message (with env context) length: {Length}", fullUserMessage.Length);
             context.Logger?.LogDebug("Original user input: {Input}", input);
+
+            // Add spacing before user message
+            context.ScrollbackTerminal.WriteStatic(new Markup(""));
 
             // Display only the original user input (stripped of env context)
             var displayMessage = new ChatMessage(ChatRole.User, input);

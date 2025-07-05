@@ -1,7 +1,7 @@
 <task name="Start New Task">
 
 <task_objective>
-Prepare an AI model to work effectively on the Mogzi project by ensuring comprehensive understanding of the project architecture, design patterns, and implementation details, then gather the user's task objective. The expected output is a fully prepared AI model ready to work productively within established Mogzi patterns.
+Prepare an AI model to work effectively on the [REDACTED] project by ensuring comprehensive understanding of the project architecture, design patterns, and implementation details, then gather the user's task objective. The expected output is a fully prepared AI model ready to work productively within established [REDACTED] project patterns.
 </task_objective>
 
 <detailed_sequence_steps>
@@ -22,19 +22,19 @@ Prepare an AI model to work effectively on the Mogzi project by ensuring compreh
 
 ## 2. Codebase Familiarization
 
-**IMPORTANT NOTE**: The `src/Cli/` project is obsolete and should not be examined. Focus only on the current Mogzi.TUI implementation.
+**IMPORTANT NOTE**: The `src/Cli/` project is obsolete and should not be examined. Focus only on the current [REDACTED] implementation.
 
-1. Use the `read_file` tool to examine the solution structure by reading `src/Mogzi.sln`.
+1. Use the `read_file` tool to examine the solution structure by reading `src/[REDACTED]`.
 
-2. Use the `read_file` tool to review the main project dependencies in `src/Mogzi/Mogzi.csproj`.
+2. Use the `read_file` tool to review the main project dependencies in `src/[REDACTED]`.
 
-3. Use the `read_file` tool to understand the global imports in `src/Mogzi/GlobalUsings.cs`.
+3. Use the `read_file` tool to understand the global imports in `src/[REDACTED]`.
 
-4. Use the `list_files` tool to analyze the core domain models in `src/Mogzi/Domain/`.
+4. Use the `list_files` tool to analyze the core domain models in `src/[REDACTED]`.
 
-5. Use the `list_files` tool to review the service layer in `src/Mogzi/Services/`.
+5. Use the `list_files` tool to review the service layer in `src/[REDACTED]`.
 
-6. Use the `list_files` tool to examine the tool implementations in `src/Mogzi/Tools/`.
+6. Use the `list_files` tool to examine the tool implementations in `src/[REDACTED]`.
 
 ## 5. Key Information Retention
 
@@ -60,10 +60,10 @@ Prepare an AI model to work effectively on the Mogzi project by ensuring compreh
     - Structured XML tool responses
 
 4. Retain understanding of project structure:
-    - Mogzi: Core library with domain, services, and tools
-    - Mogzi.TUI: Terminal user interface application
-    - Mogzi.PawPrints: Terminal interface abstraction
-    - Mogzi.Tests: Unit and integration tests
+    - [REDACTED] dir: Core library with domain, services, and tools
+    - [REDACTED] dir: Terminal user interface application
+    - [REDACTED] dir: Terminal interface abstraction
+    - [REDACTED] dir: Unit and integration tests
 
 5. Retain understanding of development practices:
     - Test-driven development with comprehensive test coverage
@@ -73,7 +73,7 @@ Prepare an AI model to work effectively on the Mogzi project by ensuring compreh
 
 ## 6. Task Objective Gathering
 
-1. Use the `ask_followup_question` tool to ask the user: "I have reviewed the Mogzi project documentation and codebase. I understand the architecture, design patterns, and development practices. What is your objective for today's task?"
+1. Use the `ask_followup_question` tool to ask the user: "I have reviewed the project documentation and codebase. I understand the architecture, design patterns, and development practices. What is your objective for today's task?"
 
 2. Wait for the user's response to understand their specific task objective.
 

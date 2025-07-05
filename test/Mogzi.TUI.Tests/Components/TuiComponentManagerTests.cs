@@ -8,7 +8,8 @@ public class TuiComponentManagerTests
     public TuiComponentManagerTests()
     {
         _logger = Substitute.For<ILogger<TuiComponentManager>>();
-        _componentManager = new TuiComponentManager(_logger);
+        var renderCache = Substitute.For<IRenderCache>();
+        _componentManager = new TuiComponentManager(_logger, renderCache);
     }
 
     [Fact]

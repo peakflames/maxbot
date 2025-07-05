@@ -4,12 +4,11 @@ namespace Mogzi.TUI.Components;
 /// Displays the welcome message and branding for the application.
 /// Supports customizable welcome content and handles initial application state.
 /// </summary>
-public class WelcomePanel : ITuiComponent
+public class WelcomePanel : BaseTuiComponent
 {
-    public string Name => "WelcomePanel";
-    public bool IsVisible { get; set; } = true;
+    public override string Name => "WelcomePanel";
 
-    public IRenderable Render(IRenderContext context)
+    protected override IRenderable RenderContent(IRenderContext context)
     {
         var contentItems = new List<IRenderable>
         {
@@ -33,22 +32,5 @@ public class WelcomePanel : ITuiComponent
         };
 
         return new Rows(contentItems);
-    }
-
-    public Task<bool> HandleInputAsync(IRenderContext context, object inputEvent)
-    {
-        // Welcome panel doesn't handle input events
-        return Task.FromResult(false);
-    }
-
-    public Task InitializeAsync(IRenderContext context)
-    {
-        context.Logger.LogDebug("WelcomePanel initialized");
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        return Task.CompletedTask;
     }
 }

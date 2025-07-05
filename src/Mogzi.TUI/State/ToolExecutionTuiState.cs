@@ -12,24 +12,17 @@ public class ToolExecutionTuiState : ITuiState
 
     public IRenderable RenderDynamicContent(ITuiContext context)
     {
-        var animationFrame = DateTime.Now.Millisecond / 250 % 4;
-        var leadingAnimation = animationFrame switch
-        {
-            0 => "   ",
-            1 => ".  ",
-            2 => ".. ",
-            3 => "...",
-            _ => "   "
-        };
-
-        // Provide meaningful progress text
+        // DEAD CODE: This method is NEVER CALLED by the real application!
+        // The real app uses ProgressPanel component for spinner rendering.
+        // This exists only for test infrastructure that should be updated.
+        
         var progressText = string.IsNullOrWhiteSpace(context.ToolProgress)
             ? (!string.IsNullOrWhiteSpace(context.CurrentToolName)
                 ? $"Executing {context.CurrentToolName}..."
                 : "Executing tool...")
             : context.ToolProgress;
 
-        var toolExecutionComponent = new Panel(new Markup($"[yellow]{leadingAnimation}[/] [dim]{progressText}[/]"))
+        var toolExecutionComponent = new Panel(new Markup($"⠋ [dim]{progressText} Press Esc to cancel[/]"))
             .NoBorder();
 
         return new Rows(new Text(""), toolExecutionComponent, new Text(""), CreateFlexFooterComponent(context));

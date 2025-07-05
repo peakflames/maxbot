@@ -1,15 +1,14 @@
 namespace Mogzi.TUI.Components;
 
 /// <summary>
-/// Displays animated progress indicators for AI operations.
-/// Shows operation status, duration, and supports different progress types.
+/// Displays progress information for ongoing operations.
+/// Supports different progress indicators and status messages.
 /// </summary>
-public class ProgressPanel : ITuiComponent
+public class ProgressPanel : BaseTuiComponent
 {
-    public string Name => "ProgressPanel";
-    public bool IsVisible { get; set; } = true;
+    public override string Name => "ProgressPanel";
 
-    public IRenderable Render(IRenderContext context)
+    protected override IRenderable RenderContent(IRenderContext context)
     {
         var currentState = context.CurrentState;
 
@@ -58,25 +57,23 @@ public class ProgressPanel : ITuiComponent
 
     private string GetAnimationFrame()
     {
-        // Simple rotating animation
-        var frames = new[] { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" };
-        var frameIndex = (int)(DateTime.Now.Millisecond / 100) % frames.Length;
-        return frames[frameIndex];
+        // Use unified animation utility for consistent timing
+        return AnimationUtility.GetSpinnerFrame();
     }
 
-    public Task<bool> HandleInputAsync(IRenderContext context, object inputEvent)
+    public override Task<bool> HandleInputAsync(IRenderContext context, object inputEvent)
     {
         // Progress panel doesn't handle input events directly
         return Task.FromResult(false);
     }
 
-    public Task InitializeAsync(IRenderContext context)
+    public override Task InitializeAsync(IRenderContext context)
     {
         context.Logger.LogDebug("ProgressPanel initialized");
         return Task.CompletedTask;
     }
 
-    public Task DisposeAsync()
+    public override Task DisposeAsync()
     {
         return Task.CompletedTask;
     }

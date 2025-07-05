@@ -1,15 +1,14 @@
 namespace Mogzi.TUI.Components;
 
 /// <summary>
-/// Displays autocomplete suggestions with selection highlighting.
-/// Handles navigation and selection logic for different completion types.
+/// Displays autocomplete suggestions for user input.
+/// Supports multiple autocomplete providers and keyboard navigation.
 /// </summary>
-public class AutocompletePanel : ITuiComponent
+public class AutocompletePanel : BaseTuiComponent
 {
-    public string Name => "AutocompletePanel";
-    public bool IsVisible { get; set; } = true;
+    public override string Name => "AutocompletePanel";
 
-    public IRenderable Render(IRenderContext context)
+    protected override IRenderable RenderContent(IRenderContext context)
     {
         var inputContext = context.TuiContext.InputContext;
 
@@ -36,20 +35,20 @@ public class AutocompletePanel : ITuiComponent
             .Padding(0, 0);
     }
 
-    public Task<bool> HandleInputAsync(IRenderContext context, object inputEvent)
+    public override Task<bool> HandleInputAsync(IRenderContext context, object inputEvent)
     {
         // Input handling is delegated to the state manager and mediator
         // This component focuses on rendering
         return Task.FromResult(false);
     }
 
-    public Task InitializeAsync(IRenderContext context)
+    public override Task InitializeAsync(IRenderContext context)
     {
         context.Logger.LogDebug("AutocompletePanel initialized");
         return Task.CompletedTask;
     }
 
-    public Task DisposeAsync()
+    public override Task DisposeAsync()
     {
         return Task.CompletedTask;
     }

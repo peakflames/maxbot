@@ -33,15 +33,8 @@ public class FlexColumnLayout : ITuiLayout
             new Text("")
         };
 
-        // Show welcome panel if no chat history
-        var chatHistory = context.TuiContext.HistoryManager.GetCurrentChatHistory();
-        if (!chatHistory.Any())
-        {
-            if (components.TryGetValue("WelcomePanel", out var welcomePanel) && welcomePanel.IsVisible)
-            {
-                contentComponents.Add(welcomePanel.Render(context));
-            }
-        }
+        // Welcome panel is now rendered in static content area, not dynamic content
+        // This prevents duplicate rendering and improves performance
 
         // Show progress panel for thinking and tool execution states
         if (currentState is ChatState.Thinking or ChatState.ToolExecution)

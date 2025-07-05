@@ -13,8 +13,8 @@ public static class ServiceConfiguration
         // Add logging - file logging only to keep UI clean
         _ = services.AddLogging(builder =>
         {
-            _ = builder.AddProvider(new FileLoggerProvider(LogLevel.Information));
-            _ = builder.SetMinimumLevel(LogLevel.Information);
+            _ = builder.AddProvider(new FileLoggerProvider(LogLevel.Debug));
+            _ = builder.SetMinimumLevel(LogLevel.Debug);
         });
 
         // Add Spectre.Console
@@ -54,6 +54,7 @@ public static class ServiceConfiguration
         // Add TUI infrastructure components
         _ = services.AddSingleton<FlexColumnTuiApp>();
         _ = services.AddSingleton<IScrollbackTerminal, ScrollbackTerminal>();
+        _ = services.AddSingleton<IKeyboardHandler, AdvancedKeyboardHandler>();
         _ = services.AddSingleton<ToolResponseParser>();
 
         // Add state management components
@@ -97,6 +98,7 @@ public static class ServiceConfiguration
         _ = services.AddSingleton<IRenderingUtilities, RenderingUtilities>();
         _ = services.AddSingleton<IThemeInfo, DefaultThemeInfo>();
         _ = services.AddSingleton<ITuiLayout, FlexColumnLayout>();
+        _ = services.AddSingleton<IRenderCache, TuiRenderCache>();
 
         // Register TUI components
         _ = services.AddSingleton<InputPanel>();
@@ -110,7 +112,8 @@ public static class ServiceConfiguration
         _ = services.AddSingleton<ITuiComponentManager>(serviceProvider =>
         {
             var logger = serviceProvider.GetRequiredService<ILogger<TuiComponentManager>>();
-            var componentManager = new TuiComponentManager(logger);
+            var renderCache = serviceProvider.GetRequiredService<IRenderCache>();
+            var componentManager = new TuiComponentManager(logger, renderCache);
             var layout = serviceProvider.GetRequiredService<ITuiLayout>();
 
             // Register all components

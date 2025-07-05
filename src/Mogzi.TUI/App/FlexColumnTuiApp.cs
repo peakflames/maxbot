@@ -9,7 +9,7 @@ public sealed class FlexColumnTuiApp : IDisposable
     private readonly ITuiComponentManager _componentManager;
     private readonly ITuiMediator _mediator;
     private readonly CancellationTokenSource _cancellationTokenSource;
-    private readonly AdvancedKeyboardHandler _keyboardHandler;
+    private readonly IKeyboardHandler _keyboardHandler;
     private readonly IScrollbackTerminal _scrollbackTerminal;
     private readonly HistoryManager _historyManager;
     private bool _isDisposed = false;
@@ -33,7 +33,7 @@ public sealed class FlexColumnTuiApp : IDisposable
 
         _cancellationTokenSource = new CancellationTokenSource();
 
-        _keyboardHandler = new AdvancedKeyboardHandler(_serviceProvider.GetService<ILogger<AdvancedKeyboardHandler>>());
+        _keyboardHandler = serviceProvider.GetRequiredService<IKeyboardHandler>();
 
         _keyboardHandler.KeyPressed += OnKeyPressed;
         _keyboardHandler.KeyCombinationPressed += OnKeyCombinationPressed;
@@ -114,20 +114,15 @@ public sealed class FlexColumnTuiApp : IDisposable
     private void RenderInitialContent()
     {
         var chatHistory = _historyManager.GetCurrentChatHistory();
-        if (!chatHistory.Any())
+        if (chatHistory.Any())
         {
-            _scrollbackTerminal.WriteStatic(CreateWelcomeMessage());
-
-            // TODO: Implement once session management is implemented
-            // _scrollbackTerminal.WriteStatic(new Markup("[dim]No existing chat history found, starting fresh session[/]"));
-            // _scrollbackTerminal.WriteStatic(new Markup(""));
+            // Only render chat history as static content
+            RenderHistory();
         }
         else
         {
-            // TODO: Implement once session management is implemented
-            // _scrollbackTerminal.WriteStatic(new Markup($"[dim]Loading {chatHistory.Count} messages from existing chat history[/]"));
-            // _scrollbackTerminal.WriteStatic(new Markup(""));
-            RenderHistory();
+            // Render welcome message once in static content when no chat history exists
+            _scrollbackTerminal.WriteStatic(CreateWelcomeMessage());
         }
     }
 
@@ -159,15 +154,22 @@ public sealed class FlexColumnTuiApp : IDisposable
 
         try
         {
+            _logger.LogDebug("About to start keyboard handler - IsRunning: {IsRunning}", _keyboardHandler.IsRunning);
+
             var keyboardTask = _keyboardHandler.StartAsync(cancellationToken);
+            _logger.LogDebug("Keyboard handler StartAsync called, starting dynamic display");
+
             var dynamicDisplayTask = _scrollbackTerminal.StartDynamicDisplayAsync(RenderDynamicContent, cancellationToken);
+            _logger.LogDebug("Both tasks started, waiting for completion");
 
             await Task.WhenAll(keyboardTask, dynamicDisplayTask);
+            _logger.LogDebug("Both tasks completed");
 
             return 0;
         }
         catch (OperationCanceledException)
         {
+            _logger.LogDebug("RunMainLoopAsync cancelled");
             return 0;
         }
         catch (Exception ex)
@@ -193,7 +195,8 @@ public sealed class FlexColumnTuiApp : IDisposable
                 themeInfo
             );
 
-            // Update component visibility based on current state
+            // Only update component visibility if the state has actually changed
+            // This prevents unnecessary re-renders when content is the same
             _componentManager.UpdateComponentVisibility(_stateManager.CurrentStateType, renderContext);
 
             // Render the layout using the component manager
@@ -473,59 +476,6 @@ public sealed class FlexColumnTuiApp : IDisposable
         inputContext.CursorPosition = inputContext.CurrentInput.Length;
     }
 
-    private async Task SubmitCurrentInput()
-    {
-        var inputContext = _tuiContext.InputContext;
-        if (string.IsNullOrWhiteSpace(inputContext.CurrentInput) || _stateManager.CurrentStateType != ChatState.Input)
-        {
-            return;
-        }
 
-        var inputToSubmit = inputContext.CurrentInput;
-        AddToCommandHistory(inputToSubmit);
-        inputContext.Clear();
-        _tuiContext.CommandHistoryIndex = -1;
-
-        await ProcessUserInput(inputToSubmit);
-    }
-
-    private void AddToCommandHistory(string command)
-    {
-        if (string.IsNullOrWhiteSpace(command))
-        {
-            return;
-        }
-
-        if (_tuiContext.CommandHistory.Contains(command))
-        {
-            return;
-        }
-
-        _tuiContext.CommandHistory.Add(command);
-
-        if (_tuiContext.CommandHistory.Count > 100)
-        {
-            _tuiContext.CommandHistory.RemoveAt(0);
-        }
-
-        _tuiContext.CommandHistoryIndex = -1;
-    }
-
-    private async Task ProcessUserInput(string input)
-    {
-        try
-        {
-            // Delegate user input processing to the mediator
-            await _mediator.HandleUserInputAsync(input, _tuiContext);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Error processing user input through mediator");
-            var errorMessage = new ChatMessage(ChatRole.Assistant, $"Error processing input: {ex.Message}");
-            _historyManager.AddAssistantMessage(errorMessage);
-            var renderingUtilities = _serviceProvider.GetRequiredService<IRenderingUtilities>();
-            _scrollbackTerminal.WriteStatic(renderingUtilities.RenderMessage(errorMessage));
-        }
-    }
 
 }

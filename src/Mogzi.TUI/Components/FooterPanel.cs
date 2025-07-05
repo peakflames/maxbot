@@ -1,15 +1,14 @@
 namespace Mogzi.TUI.Components;
 
 /// <summary>
-/// Displays status information including directory, model, and token usage.
-/// Handles dynamic status updates and supports configurable status items.
+/// Displays footer information including status, shortcuts, and help text.
+/// Provides contextual information based on current application state.
 /// </summary>
-public class FooterPanel : ITuiComponent
+public class FooterPanel : BaseTuiComponent
 {
-    public string Name => "FooterPanel";
-    public bool IsVisible { get; set; } = true;
+    public override string Name => "FooterPanel";
 
-    public IRenderable Render(IRenderContext context)
+    protected override IRenderable RenderContent(IRenderContext context)
     {
         var currentDir = context.RenderingUtilities.FormatDisplayPath(
             context.TuiContext.WorkingDirectoryProvider.GetCurrentDirectory());
@@ -24,19 +23,19 @@ public class FooterPanel : ITuiComponent
             .NoBorder();
     }
 
-    public Task<bool> HandleInputAsync(IRenderContext context, object inputEvent)
+    public override Task<bool> HandleInputAsync(IRenderContext context, object inputEvent)
     {
         // Footer panel doesn't handle input events
         return Task.FromResult(false);
     }
 
-    public Task InitializeAsync(IRenderContext context)
+    public override Task InitializeAsync(IRenderContext context)
     {
         context.Logger.LogDebug("FooterPanel initialized");
         return Task.CompletedTask;
     }
 
-    public Task DisposeAsync()
+    public override Task DisposeAsync()
     {
         return Task.CompletedTask;
     }
